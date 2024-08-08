@@ -1,9 +1,6 @@
 #!/bin/bash
 
-# curl API requests with access tokens
-
 # Remotes:
-# + GitHub
 
 TPLOWNER=""
 TPLREPO=""
@@ -18,26 +15,31 @@ REPO=""
 DESCR=""
 BRANCH="main"
 
-response=$(curl -X POST \
+# + GitHub
+
+response_gh=$(curl -X POST \
 	-H "Authorization: token $MYTOKEN_GH" \
 	-H "Accept: application/vnd.github.v3+json" \
-	"https://api.github.com/user/repos" \
-  -d '{"name":"$REPO","description":"$DESCR","private":false}')
+	-d '{"name":"$REPO", "description":"$DESCR", "private":false}' \
+	"https://api.github.com/user/repos")
 
 # + GitLab
 
-response=$(curl --header "PRIVATE-TOKEN: $MYTOKEN_GL" \
-	--data "name=$REPO&description=$DESCR" \
+response_gl=$(curl -X POST \
+	-H "PRIVATE-TOKEN: $MYTOKEN_GL" \
+	-d "name=$REPO&description=$DESCR" \
 	"https://gitlab.com/api/v4/projects")
-
-project_url=$(echo $response | jq -r '.http_url_to_repo')
-git remote add $REM_GL $project_url
-git push -u $REM_GL $BRANCH
 
 # + Codeberg
 
-response=$(curl -X POST \
+response_cb=$(curl -X POST \
 	-H "Authorization: token $MYTOKEN_CB" \
 	-H "Content-Type: application/json" \
-	"https://codeberg.org/api/v1/user/repos" \
-	-d '{"name":"$REPO", "description":"$DESCR", "private":false}')
+	-d '{"name":"$REPO", "description":"$DESCR", "private":false}' \
+	"https://codeberg.org/api/v1/user/repos")
+
+# Add remotes to a repo
+
+project_url_gh=$(echo $response_gh | jq -r '.http_url_to_repo')
+git remote add $REM_GL $project_url
+git push -u $REM_GL $BRANCH
