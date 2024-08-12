@@ -53,10 +53,10 @@ check_repo_exists_on_server() {
 	local repo_name="$1"
 	local token="$2"
 	local url="$3"
-	local headers=("$@")
+	local headers=("${@:4}")
 
 	local curl_headers=()
-	for header in "${headers[@]:3}"; do
+	for header in "${headers[@]}"; do
 		curl_headers+=(-H "$header")
 	done
 
@@ -67,8 +67,15 @@ check_repo_exists_on_server() {
 	return 1  # Return 1 to indicate that the repo does not exist
 }
 
-declare -A repo_conf_labels
-repo_conf_labels+=( ["OWNER"]="Owner" ["REPO"]="Repo Name" ["DESCR"]="Repo Description" ["TOKEN_GH"]="Token @ GitHub" ["TOKEN_GL"]="Token @ GitLab" ["TOKEN_CB"]="Token @ Codeberg" ["REPO_DIR"]="Repository Directory" )
+declare -A repo_conf_labels=(
+	["OWNER"]="Owner"
+	["REPO"]="Repo Name"
+	["DESCR"]="Repo Description"
+	["TOKEN_GH"]="Token @ GitHub"
+	["TOKEN_GL"]="Token @ GitLab"
+	["TOKEN_CB"]="Token @ Codeberg"
+	["REPO_DIR"]="Repository Directory"
+)
 
 params_print() {
 	local -n names=$1
@@ -103,30 +110,14 @@ read_all_inputs() {
 }
 
 prompt_to_go() {
-	local max_attempts=${1:-0}  # Default to 0 for unlimited attempts
-	local attempts=0
-
 	while true; do
 		read -p "Do you want to proceed? (y/n): " confirm
-
-		if [[ $confirm == "y" || $confirm == "n" ]]; then
-			break
-		else
-			echo "Invalid input. Please enter 'y' or 'n'."
-		fi
-
-		((attempts++))
-
-		if ((max_attempts > 0 && attempts >= max_attempts)); then
-			echo "Maximum attempts reached. Operation canceled."
-			exit 1
-		fi
+		case $confirm in
+			y|Y) break ;;
+			n|N) echo "Operation canceled."; exit 1 ;;
+			*) echo "Invalid input. Please enter 'y' or 'n'." ;;
+		esac
 	done
-
-	if [[ $confirm != "y" ]]; then
-		echo "Operation canceled."
-		exit 1
-	fi
 }
 
 show_usage() {
@@ -163,8 +154,7 @@ parse_arguments() {
 	while [[ $# -gt 0 ]]; do
 		key="$1"
 		value="$2"
-		shift # past the key
-		shift # past the value
+		shift 2
 
 		for param_key in "${!param_names[@]}"; do
 			long_opt="--${param_names[$param_key]}"
@@ -230,7 +220,17 @@ main() {
 	# Allow interactive input for missing parameters
 	read_all_inputs
 
-	declare -A repo_conf_values=( ["OWNER"]="$OWNER" ["REPO"]="$REPO" ["DESCR"]="$DESCR" ["TOKEN_GH"]="$TOKEN_GH" ["TOKEN_GL"]="$TOKEN_GL" ["TOKEN_CB"]="$TOKEN_CB" ["REPO_DIR"]="$REPO_DIR" ["PRIVATE"]="false" ["VISIBILITY"]="public" )
+	declare -A repo_conf_values=(
+		["OWNER"]="$OWNER"
+		["REPO"]="$REPO"
+		["DESCR"]="$DESCR"
+		["TOKEN_GH"]="$TOKEN_GH"
+		["TOKEN_GL"]="$TOKEN_GL"
+		["TOKEN_CB"]="$TOKEN_CB"
+		["REPO_DIR"]="$REPO_DIR"
+		["PRIVATE"]="false"
+		["VISIBILITY"]="public"
+	)
 
 	echo "Please review before applying:"
 	params_print repo_conf_labels repo_conf_values
@@ -257,8 +257,16 @@ main() {
 	done
 
 	provs=("gh" "gl" "cb")
-	declare -A prov_url_props=( [gh]=".ssh_url" [gl]=".ssh_url_to_repo" [cb]=".ssh_url" )
-	declare -A tokens=( [gh]="$TOKEN_GH" [gl]="$TOKEN_GL" [cb]="$TOKEN_CB" )
+	declare -A prov_url_props=(
+		[gh]=".ssh_url"
+		[gl]=".ssh_url_to_repo"
+		[cb]=".ssh_url"
+	)
+	declare -A tokens=(
+		[gh]="$TOKEN_GH"
+		[gl]="$TOKEN_GL"
+		[cb]="$TOKEN_CB"
+	)
 
 	for provider in "${provs[@]}"; do
 		repo_rem_add "$REPO_DIR" "$provider" "$(repo_rem_url_get "$REPO" "${prov_url_props[$provider]}")" || exit 1
