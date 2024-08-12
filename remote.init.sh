@@ -52,27 +52,16 @@ check_git_repo() {
 check_repo_exists_on_server() {
 	local repo_name="$1"
 	local token="$2"
-	local provider="$3"
-	local url
+	local url="$3"
+	local headers=("$@")
 
-	case "$provider" in
-		gh)
-			url="https://api.github.com/user/repos"
-			;;
-		gl)
-			url="https://gitlab.com/api/v4/projects?search=$repo_name"
-			;;
-		cb)
-			url="https://codeberg.org/api/v1/user/repos"
-			;;
-		*)
-			echo "Unknown provider: $provider"
-			return 1
-			;;
-	esac
+	local curl_headers=()
+	for header in "${headers[@]:3}"; do
+		curl_headers+=(-H "$header")
+	done
 
-	if curl -s -H "Authorization: token $token" "$url" | jq -e ".[] | select(.name == \"$repo_name\")" > /dev/null; then
-		echo "Repository '$repo_name' already exists on $provider."
+	if curl -s "${curl_headers[@]}" "$url" | jq -e ".[] | select(.name == \"$repo_name\")" > /dev/null; then
+		echo "Repository '$repo_name' already exists on the server."
 		return 0  # Return 0 to indicate that the repo exists
 	fi
 	return 1  # Return 1 to indicate that the repo does not exist
@@ -88,9 +77,9 @@ params_print() {
 	local l=0
 	local IFSB=$IFS
 	IFS=$'\n'
-	for ((i=0; i<${#names[@]}; i++)); do
-		print_list+="${names[$i]}\t${descr[$i]}\n"
-		(( l < ${#names[$i]} )) && l=${#names[$i]}
+	for key in "${!names[@]}"; do
+		print_list+="${names[$key]}\t${descr[$key]}\n"
+		(( l < ${#names[$key]} )) && l=${#names[$key]}
 	done
 	IFS=$IFSB
 	local tab_stop
@@ -101,16 +90,16 @@ params_print() {
 }
 
 read_all_inputs() {
-	OWNER="${1:-$DEFAULT_OWNER}"
-	REPO="${2:-$DEFAULT_REPO}"
-	DESCR="${3:-$DEFAULT_DESCR}"
-	BRANCH="${4:-$DEFAULT_BRANCH}"
-	PRIVATE="${5:-$DEFAULT_PRIVATE}"
-	VISIBILITY="${6:-$DEFAULT_VISIBILITY}"
-	TOKEN_GH="${7:-}"
-	TOKEN_GL="${8:-}"
-	TOKEN_CB="${9:-}"
-	REPO_DIR="${10:-$(pwd)}"
+	OWNER="${OWNER:-$(read_input 'Enter owner' "$DEFAULT_OWNER")}"
+	REPO="${REPO:-$(read_input 'Enter repo name' "$DEFAULT_REPO")}"
+	DESCR="${DESCR:-$(read_input 'Enter repo description' "$DEFAULT_DESCR")}"
+	BRANCH="${BRANCH:-$(read_input 'Enter branch name' "$DEFAULT_BRANCH")}"
+	PRIVATE="${PRIVATE:-$(read_input 'Is the repo private?' "$DEFAULT_PRIVATE")}"
+	VISIBILITY="${VISIBILITY:-$(read_input 'Enter visibility' "$DEFAULT_VISIBILITY")}"
+	TOKEN_GH="${TOKEN_GH:-$(read_input 'Enter GitHub token' "")}"
+	TOKEN_GL="${TOKEN_GL:-$(read_input 'Enter GitLab token' "")}"
+	TOKEN_CB="${TOKEN_CB:-$(read_input 'Enter Codeberg token' "")}"
+	REPO_DIR="${REPO_DIR:-$(read_input 'Enter repository directory' "$(pwd)")}"
 }
 
 prompt_to_go() {
@@ -146,7 +135,7 @@ show_usage() {
 		["OWNER"]="owner"
 		["REPO"]="repo_name"
 		["DESCR"]="description"
-		["BR"]="branch"
+		["BRANCH"]="branch"
 		["TOKEN_GH"]="github_token"
 		["TOKEN_GL"]="gitlab_token"
 		["TOKEN_CB"]="codeberg_token"
@@ -157,18 +146,41 @@ show_usage() {
 		["OWNER"]="Owner of the repository (default: current user)."
 		["REPO"]="Name of the repository (default: current directory name)."
 		["DESCR"]="Description of the repository (default: generated description)."
-		["BR"]="Branch name to push to (default: 'main')."
+		["BRANCH"]="Branch name to push to (default: 'main')."
 		["TOKEN_GH"]="GitHub access token."
 		["TOKEN_GL"]="GitLab access token."
 		["TOKEN_CB"]="Codeberg access token."
 	)
-	
-	echo "Usage: $0 <repository_directory> [owner] [repo_name] [description] [branch] [github_token] [gitlab_token] [codeberg_token]"
+
+	echo "Usage: $0 [options]"
 	echo
-	echo "Parameters:"
-	params_print param_names param_descr
 	echo "Options:"
+	params_print param_names param_descr
 	echo "  -h, --help             Show this help message and exit."
+}
+
+parse_arguments() {
+	while [[ $# -gt 0 ]]; do
+		key="$1"
+		value="$2"
+		shift # past the key
+		shift # past the value
+
+		for param_key in "${!param_names[@]}"; do
+			long_opt="--${param_names[$param_key]}"
+			short_opt="-${param_key,,}" # Convert key to lowercase for short option
+
+			if [[ "$key" == "$long_opt" || "$key" == "$short_opt" ]]; then
+				eval "${param_key}=\"$value\""
+				break
+			fi
+		done
+
+		if [[ "$key" == "-h" || "$key" == "--help" ]]; then
+			show_usage
+			exit 0
+		fi
+	done
 }
 
 rephs() {
@@ -195,19 +207,14 @@ remote_create() {
 		curl_headers+=(-H "$header")
 	done
 
-	if check_repo_exists_on_server "$repo_name" "$token" "$provider"; then
-		echo "Skipping creation on $provider as the repository already exists."
-		return
-	fi
-
 	curl -X POST "${curl_headers[@]}" -d "$data" "$url"
 
 	if [[ $? -ne 0 ]]; then
-		echo "Error creating repository on $provider."
+		echo "Error creating repository."
 		return 1
 	fi
 
-	echo "Repository '$repo_name' created on $provider."
+	echo "Repository created."
 }
 
 main() {
@@ -217,15 +224,11 @@ main() {
 		exit 0
 	fi
 
-	if [ $# -eq 0 ]; then
-		REPO_DIR="$(pwd)"  # Set to current directory
-	else
-		REPO_DIR="$1"  # Use the first argument if provided
-	fi
+	# Parse command-line arguments
+	parse_arguments "$@"
 
-	check_git_repo "$REPO_DIR"
-
-	read_all_inputs "$@"
+	# Allow interactive input for missing parameters
+	read_all_inputs
 
 	declare -A repo_conf_values=( ["OWNER"]="$OWNER" ["REPO"]="$REPO" ["DESCR"]="$DESCR" ["TOKEN_GH"]="$TOKEN_GH" ["TOKEN_GL"]="$TOKEN_GL" ["TOKEN_CB"]="$TOKEN_CB" ["REPO_DIR"]="$REPO_DIR" ["PRIVATE"]="false" ["VISIBILITY"]="public" )
 
@@ -246,19 +249,19 @@ main() {
 		data=$(rephs "$data" repo_conf_values)
 		headers=($(rephs "${headers[@]}" repo_conf_values))
 
-		remote_create "$url" "$data" "${headers[@]}"
+		if ! check_repo_exists_on_server "$REPO" "${tokens[$prov]}" "$url" "${headers[@]}"; then
+			remote_create "$url" "$data" "${headers[@]}"
+		else
+			echo "Skipping creation on $prov as the repository already exists."
+		fi
 	done
 
 	provs=("gh" "gl" "cb")
 	declare -A prov_url_props=( [gh]=".ssh_url" [gl]=".ssh_url_to_repo" [cb]=".ssh_url" )
 	declare -A tokens=( [gh]="$TOKEN_GH" [gl]="$TOKEN_GL" [cb]="$TOKEN_CB" )
-	
-	for i in "${!provs[@]}"; do
-		[ ! check_repo_exists_on_server "$REPO" "${tokens[$i]}" "${provs[$i]}" ] && create_repo "${provs[$i]}" "$REPO" "$DESCR" "${tokens[$i]}"
-	done
 
 	for provider in "${provs[@]}"; do
-		repo_rem_add "$REPO_DIR" "$provider" "$(repo_rem_url_get "$REPO" ".ssh_url")" || exit 1
+		repo_rem_add "$REPO_DIR" "$provider" "$(repo_rem_url_get "$REPO" "${prov_url_props[$provider]}")" || exit 1
 		repo_rem_push "$REPO_DIR" "$provider" "$BRANCH"
 	done
 }
