@@ -15,38 +15,6 @@ read_input() {
 	echo "${input:-$default}"
 }
 
-create_repo_gh() {
-	local repo_name="$1"
-	local description="$2"
-	local token="$3"
-	curl -X POST \
-		-H "Authorization: token $token" \
-		-H "Accept: application/vnd.github.v3+json" \
-		-d "{\"name\":\"$repo_name\", \"description\":\"$description\", \"private\":false}" \
-		"https://api.github.com/user/repos"
-}
-
-create_repo_gl() {
-	local repo_name="$1"
-	local description="$2"
-	local token="$3"
-	curl -X POST \
-		-H "PRIVATE-TOKEN: $token" \
-		-d "name=$repo_name&description=$description" \
-		"https://gitlab.com/api/v4/projects"
-}
-
-create_repo_cb() {
-	local repo_name="$1"
-	local description="$2"
-	local token="$3"
-	curl -X POST \
-		-H "Authorization: token $token" \
-		-H "Content-Type: application/json" \
-		-d "{\"name\":\"$repo_name\", \"description\":\"$description\", \"private\":false}" \
-		"https://codeberg.org/api/v1/user/repos"
-}
-
 repo_rem_url_get() {
 	local response="$1"
 	local property="$2"
@@ -112,15 +80,15 @@ declare -A repo_conf_labels
 repo_conf_labels+=( ["OWNER"]="Owner" ["REPO"]="Repo Name" ["DESCR"]="Repo Description" ["MYTOKEN_GH"]="Token @ GitHub" ["MYTOKEN_GL"]="Token @ GitLab" ["MYTOKEN_CB"]="Token @ Codeberg" ["REPO_DIR"]="Repository Directory" )
 
 params_print() {
-	local -n param_labels=$1
-	local -n param_values=$2
+	local -n names=$1
+	local -n descr=$2
 	local print_list=""
 	local l=0
 	local IFSB=$IFS
 	IFS=$'\n'
-	for key in "${!param_labels[@]}"; do
-		print_list+="${param_labels[$key]}\t${param_values[$key]}\n"
-		(( l < ${#repo_conf_labels[$key]} )) && l=${#repo_conf_labels[$key]}
+	for ((i=0; i<${#names[@]}; i++)); do
+		print_list+="${names[$i]}\t${descr[$i]}\n"
+		(( l < ${#names[$i]} )) && l=${#names[$i]}
 	done
 	IFS=$IFSB
 	local tab_stop
@@ -168,14 +136,120 @@ prompt_to_go() {
 	fi
 }
 
-main() {
-	# Check if a directory is passed as an argument
-	if [ $# -lt 1 ]; then
-		echo "Usage: $0 <repository_directory> [owner] [repo_name] [description] [branch] [github_token] [gitlab_token] [codeberg_token]"
-		exit 1
+show_usage() {
+	declare -A param_names=(
+		["REPO_DIR"]="repository_directory"
+		["OWNER"]="owner"
+		["REPO"]="repo_name"
+		["DESCR"]="description"
+		["BR"]="branch"
+		["MYTOKEN_GH"]="github_token"
+		["MYTOKEN_GL"]="gitlab_token"
+		["MYTOKEN_CB"]="codeberg_token"
+	)
+
+	declare -A param_descr=(
+		["REPO_DIR"]="Path to the local Git repository."
+		["OWNER"]="Owner of the repository (default: current user)."
+		["REPO"]="Name of the repository (default: current directory name)."
+		["DESCR"]="Description of the repository (default: generated description)."
+		["BR"]="Branch name to push to (default: 'main')."
+		["MYTOKEN_GH"]="GitHub access token."
+		["MYTOKEN_GL"]="GitLab access token."
+		["MYTOKEN_CB"]="Codeberg access token."
+	)
+	
+	echo "Usage: $0 <repository_directory> [owner] [repo_name] [description] [branch] [github_token] [gitlab_token] [codeberg_token]"
+	echo
+	echo "Parameters:"
+	params_print param_names param_descr
+	echo "Options:"
+	echo "  -h, --help             Show this help message and exit."
+}
+
+create_repo_gh() {
+	local repo_name="$1"
+	local description="$2"
+	local token="$3"
+	curl -X POST \
+		-H "Authorization: token $token" \
+		-H "Accept: application/vnd.github.v3+json" \
+		-d "{\"name\":\"$repo_name\", \"description\":\"$description\", \"private\":false}" \
+		"https://api.github.com/user/repos"
+}
+
+create_repo_gl() {
+	local repo_name="$1"
+	local description="$2"
+	local token="$3"
+	curl -X POST \
+		-H "PRIVATE-TOKEN: $token" \
+		-d "name=$repo_name&description=$description" \
+		"https://gitlab.com/api/v4/projects"
+}
+
+create_repo_cb() {
+	local repo_name="$1"
+	local description="$2"
+	local token="$3"
+	curl -X POST \
+		-H "Authorization: token $token" \
+		-H "Content-Type: application/json" \
+		-d "{\"name\":\"$repo_name\", \"description\":\"$description\", \"private\":false}" \
+		"https://codeberg.org/api/v1/user/repos"
+}
+
+create_repo() {
+	local provider="$1"
+	local repo_name="$2"
+	local description="$3"
+	local token="$4"
+	local resp
+	
+	if check_repo_exists_on_server "$repo_name" "$token" "$provider"; then
+		echo "Skipping creation on $provider as the repository already exists."
+		return
 	fi
 
-	REPO_DIR="$1"
+	case "$provider" in
+		gh)
+			resp=$(create_repo_gh "$repo_name" "$description" "$token")
+			;;
+		gl)
+			resp=$(create_repo_gl "$repo_name" "$description" "$token")
+			;;
+		cb)
+			resp=$(create_repo_cb "$repo_name" "$description" "$token")
+			;;
+		*)
+			echo "Unknown provider: $provider"
+			return 1
+			;;
+	esac
+
+	if [[ $? -ne 0 ]]; then
+		echo "Error creating repository on $provider."
+		return 1
+	fi
+
+	echo "Repository '$repo_name' created on $provider."
+}
+
+main() {
+	# Check for help flag
+	if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+		show_usage
+		exit 0
+	fi
+
+	# Allow calling the script without any arguments for interactive mode
+	if [ $# -eq 0 ]; then
+		REPO_DIR="$(pwd)"  # Set to current directory
+	else
+		REPO_DIR="$1"  # Use the first argument if provided
+	fi
+
+	# Check if the provided directory is a Git repository
 	check_git_repo "$REPO_DIR"
 
 	# Read all inputs from command-line arguments
@@ -188,46 +262,19 @@ main() {
 	params_print repo_conf_labels repo_conf_values
 	prompt_to_go
 
-	local resp_gh
-	local resp_gl
-	local resp_cb
+# Array of provs
+	provs=("gh" "gl" "cb")
+	declare -A prov_url_props=( [gh]=".ssh_url" [gl]=".ssh_url_to_repo" [cb]=".ssh_url" )
+	declare -A tokens=( [gh]="$TOKEN_GH" [gl]="$TOKEN_GL" [cb]="$TOKEN_CB" )
+	
+	for i in "${!provs[@]}"; do
+		[ ! check_repo_exists_on_server "$REPO" "${tokens[$i]}" "${provs[$i]}" ] && create_repo "${provs[$i]}" "$REPO" "$DESCR" "${tokens[$i]}"
+	done
 
-	# Check if repo exists on GitHub
-	if ! check_repo_exists_on_server "$REPO" "$TOKEN_GH" "gh"; then
-		resp_gh=$(create_repo_gh "$REPO" "$DESCR" "$TOKEN_GH")
-	else
-		echo "Skipping creation on GitHub as the repository already exists."
-	fi
-
-	# Check if repo exists on GitLab
-	if ! check_repo_exists_on_server "$REPO" "$TOKEN_GL" "gl"; then
-		resp_gl=$(create_repo_gl "$REPO" "$DESCR" "$TOKEN_GL")
-	else
-		echo "Skipping creation on GitLab as the repository already exists."
-	fi
-
-	# Check if repo exists on Codeberg
-	if ! check_repo_exists_on_server "$REPO" "$TOKEN_CB" "cb"; then
-		resp_cb=$(create_repo_cb "$REPO" "$DESCR" "$TOKEN_CB")
-	else
-		echo "Skipping creation on Codeberg as the repository already exists."
-	fi
-
-	local repo_rem_url_gh
-	local repo_rem_url_gl
-	local repo_rem_url_cb
-
-	repo_rem_url_gh=$(repo_rem_url_get "$resp_gh" ".ssh_url")
-	repo_rem_url_gl=$(repo_rem_url_get "$resp_gl" ".ssh_url_to_repo")
-	repo_rem_url_cb=$(repo_rem_url_get "$resp_cb" ".ssh_url")
-
-	repo_rem_add "$REPO_DIR" "github" "$repo_rem_url_gh" || exit 1
-	repo_rem_add "$REPO_DIR" "gitlab" "$repo_rem_url_gl" || exit 1
-	repo_rem_add "$REPO_DIR" "codeberg" "$repo_rem_url_cb" || exit 1
-
-	repo_rem_push "$REPO_DIR" "github" "$BRANCH"
-	repo_rem_push "$REPO_DIR" "gitlab" "$BRANCH"
-	repo_rem_push "$REPO_DIR" "codeberg" "$BRANCH"
+	for provider in "${provs[@]}"; do
+		repo_rem_add "$REPO_DIR" "$provider" "$(repo_rem_url_get "$REPO" ".ssh_url")" || exit 1
+		repo_rem_push "$REPO_DIR" "$provider" "$BRANCH"
+	done
 }
 
 main "$@"
