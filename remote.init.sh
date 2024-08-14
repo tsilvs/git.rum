@@ -198,7 +198,7 @@ remote_create() {
 		curl_headers+=(-H "$header")
 	done
 
-	curl -X POST "${curl_headers[@]}" -d "$data" "$url"
+	local resp=$(curl -X POST "${curl_headers[@]}" -d "$data" "$url")
 
 	if [[ $? -ne 0 ]]; then
 		echo "Error creating repository."
