@@ -1,54 +1,10 @@
 #!/bin/bash
 
-# Default values
-DEFAULT_OWNER="$(id -un)"
-#DEFAULT_REPO="repo-$(uuidgen | awk -F '-' '{ print $5 }')"
-DEFAULT_REPO="${PWD##*/}"
-DEFAULT_DESCR="This is a repo for $DEFAULT_OWNER/$DEFAULT_REPO project"
-DEFAULT_BRANCH="main"
-DEFAULT_PRIVATE="false"
-DEFAULT_VISIBILITY="public"
+. ./lib/var.sh
 
-declare -A repo_conf_labels=(
-	["REPO_DIR"]="Repository Directory"
-	["OWNER"]="Owner"
-	["REPO"]="Repo Name"
-	["DESCR"]="Repo Description"
-	["BRANCH"]="Branch"
-	["TOKEN_GH"]="Token @ GitHub"
-	["TOKEN_GL"]="Token @ GitLab"
-	["TOKEN_CB"]="Token @ Codeberg"
-)
+. ./lib/net.sh
 
-declare -A param_names=(
-	["REPO_DIR"]="repo_dir"
-	["OWNER"]="owner"
-	["REPO"]="repo_name"
-	["DESCR"]="description"
-	["BRANCH"]="branch"
-	["TOKEN_GH"]="github_token"
-	["TOKEN_GL"]="gitlab_token"
-	["TOKEN_CB"]="codeberg_token"
-)
-
-declare -A param_descr=(
-	["REPO_DIR"]="Path to the local Git repository."
-	["OWNER"]="Owner of the repository (default: current user)."
-	["REPO"]="Name of the repository (default: current directory name)."
-	["DESCR"]="Description of the repository (default: generated description)."
-	["BRANCH"]="Branch name to push to (default: 'main')."
-	["TOKEN_GH"]="GitHub access token."
-	["TOKEN_GL"]="GitLab access token."
-	["TOKEN_CB"]="Codeberg access token."
-)
-
-read_input() {
-	local prompt="$1"
-	local default="$2"
-	local input
-	read -p "$prompt [$default]: " input
-	echo "${input:-$default}"
-}
+. ./lib/param.sh
 
 read_all_inputs() {
 	OWNER="${OWNER:-$(read_input 'Enter owner' "$DEFAULT_OWNER")}"
@@ -61,12 +17,6 @@ read_all_inputs() {
 	TOKEN_GL="${TOKEN_GL:-$(read_input 'Enter GitLab token' "")}"
 	TOKEN_CB="${TOKEN_CB:-$(read_input 'Enter Codeberg token' "")}"
 	REPO_DIR="${REPO_DIR:-$(read_input 'Enter repository directory' "$(pwd)")}"
-}
-
-prop_get() {
-	local response="$1"
-	local property="$2"
-	echo "$response" | jq -r "$property"
 }
 
 repo_rem_add() {
@@ -209,6 +159,48 @@ remote_create() {
 }
 
 main() {
+	# Default values
+	local DEFAULT_OWNER="$(id -un)"
+	#local DEFAULT_REPO="repo-$(uuidgen | awk -F '-' '{ print $5 }')"
+	local DEFAULT_REPO="${PWD##*/}"
+	local DEFAULT_DESCR="This is a repo for $DEFAULT_OWNER/$DEFAULT_REPO project"
+	local DEFAULT_BRANCH="main"
+	local DEFAULT_PRIVATE="false"
+	local DEFAULT_VISIBILITY="public"
+
+	declare -A param_names=(
+		["REPO_DIR"]="repo_dir"
+		["OWNER"]="owner"
+		["REPO"]="repo_name"
+		["DESCR"]="description"
+		["BRANCH"]="branch"
+		["TOKEN_GH"]="github_token"
+		["TOKEN_GL"]="gitlab_token"
+		["TOKEN_CB"]="codeberg_token"
+	)
+
+	declare -A param_labels=(
+		["REPO_DIR"]="Repository Directory"
+		["OWNER"]="Owner"
+		["REPO"]="Repo Name"
+		["DESCR"]="Repo Description"
+		["BRANCH"]="Branch"
+		["TOKEN_GH"]="Token @ GitHub"
+		["TOKEN_GL"]="Token @ GitLab"
+		["TOKEN_CB"]="Token @ Codeberg"
+	)
+
+	declare -A param_descr=(
+		["REPO_DIR"]="Path to the local Git repository."
+		["OWNER"]="Owner of the repository (default: current user)."
+		["REPO"]="Name of the repository (default: current directory name)."
+		["DESCR"]="Description of the repository (default: generated description)."
+		["BRANCH"]="Branch name to push to (default: 'main')."
+		["TOKEN_GH"]="GitHub access token."
+		["TOKEN_GL"]="GitLab access token."
+		["TOKEN_CB"]="Codeberg access token."
+	)
+
 	if [[ "$1" == "-h" || "$1" == "--help" ]]; then
 		show_usage
 		exit 0
@@ -231,7 +223,7 @@ main() {
 	)
 
 	echo "Please review before applying:"
-	params_print repo_conf_labels repo_conf_values
+	params_print param_labels repo_conf_values
 	prompt_to_go
 
 	config_file="remote_repo_conf.json"
