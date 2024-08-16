@@ -55,8 +55,13 @@ repo_check_on_server() {
 	for header in "${headers[@]}"; do
 		curl_headers+=(-H "$header")
 	done
+	
+	local resp
+	resp=$(curl -s "${curl_headers[@]}" "$url")
+	local repo_exists
+	repo_exists=prop_get "$resp" ".[] | select(.name == \"$repo_name\")" > /dev/null
 
-	if curl -s "${curl_headers[@]}" "$url" | jq -e ".[] | select(.name == \"$repo_name\")" > /dev/null; then
+	if $repo_exists; then
 		echo "Repository '$repo_name' already exists on the server."
 		return 0
 	fi
@@ -77,14 +82,14 @@ params_print() {
 	IFS=$IFSB
 	local tab_stop
 	tab_stop=$(tabs -d | awk -F "tabs " 'NR==1{ print $2 }')
-	tabs $(($l + 1))
+	tabs $((l + 1))
 	echo -e "$print_list"
-	tabs $tab_stop
+	tabs "$tab_stop"
 }
 
 prompt_to_go() {
 	while true; do
-		read -p "Do you want to proceed? (y/n): " confirm
+		read -rp "Do you want to proceed? (y/n): " confirm
 		case $confirm in
 			y|Y) break ;;
 			n|N) echo "Operation canceled."; exit 1 ;;
@@ -124,19 +129,6 @@ parse_arguments() {
 	done
 }
 
-rephs() {
-	local str="$1"
-	declare -n params="$2"
-
-	for key in "${!params[@]}"; do
-		local placeholder="{{${key}}}"
-		local value="${params[$key]}"
-		str="${str//$placeholder/$value}"
-	done
-
-	echo "$str"
-}
-
 remote_create() {
 	local url="$1"
 	local data="$2"
@@ -148,9 +140,10 @@ remote_create() {
 		curl_headers+=(-H "$header")
 	done
 
-	local resp=$(curl -X POST "${curl_headers[@]}" -d "$data" "$url")
+	local resp
+	resp=$(curl -X POST "${curl_headers[@]}" -d "$data" "$url")
 
-	if [[ $? -ne 0 ]]; then
+	if ! resp; then
 		echo "Error creating repository."
 		return 1
 	fi
@@ -159,14 +152,70 @@ remote_create() {
 }
 
 main() {
+	local lang="en"	
+
 	# Default values
-	local DEFAULT_OWNER="$(id -un)"
-	#local DEFAULT_REPO="repo-$(uuidgen | awk -F '-' '{ print $5 }')"
-	local DEFAULT_REPO="${PWD##*/}"
-	local DEFAULT_DESCR="This is a repo for $DEFAULT_OWNER/$DEFAULT_REPO project"
-	local DEFAULT_BRANCH="main"
-	local DEFAULT_PRIVATE="false"
-	local DEFAULT_VISIBILITY="public"
+	local DEFAULT_OWNER
+	local DEFAULT_REPO
+	local DEFAULT_DESCR
+	local DEFAULT_BRANCH
+	local DEFAULT_PRIVATE
+	local DEFAULT_VISIBILITY
+	
+	DEFAULT_OWNER="$(id -un)"
+	#DEFAULT_REPO="repo-$(uuidgen | awk -F '-' '{ print $5 }')"
+	DEFAULT_REPO="${PWD##*/}"
+	DEFAULT_DESCR="This is a repo for $DEFAULT_OWNER/$DEFAULT_REPO project"
+	DEFAULT_BRANCH="main"
+	DEFAULT_PRIVATE="false"
+	DEFAULT_VISIBILITY="public"
+	
+	local i18n='{
+		"en": {
+			"repo": {
+				"err": "Error creating repository.",
+				"succ": "Repository created."
+			},
+			"val": {
+				"rev": "Please review before applying:"
+			},
+			"params": {
+				"prompts": {
+					"OWNER": "Enter owner",
+					"REPO": "Enter repo name",
+					"DESCR": "Enter repo description",
+					"BRANCH": "Enter branch name",
+					"PRIVATE": "Is the repo private?",
+					"VISIBILITY": "Enter visibility",
+					"TOKEN_GH": "Enter GitHub token",
+					"TOKEN_GL": "Enter GitLab token",
+					"TOKEN_CB": "Enter Codeberg token",
+					"REPO_DIR": "Enter repository directory"
+				}
+			}
+		}
+	}'
+
+	local config_json='[
+		{
+			"prov": "gh",
+			"url": "https://api.github.com/user/repos",
+			"headers": ["Authorization: token {{TOKEN}}", "Accept: application/vnd.github.v3+json"],
+			"data": "{\"name\":\"{{REPO_NAME}}\", \"description\":\"{{DESCRIPTION}}\", \"private\":{{PRIVATE}}}"
+		},
+		{
+			"prov": "gl",
+			"url": "https://gitlab.com/api/v4/projects",
+			"headers": ["PRIVATE-TOKEN: {{TOKEN}}"],
+			"data": "name={{REPO_NAME}}&description={{DESCRIPTION}}&visibility={{VISIBILITY}}"
+		},
+		{
+			"prov": "cb",
+			"url": "https://codeberg.org/api/v1/user/repos",
+			"headers": ["Authorization: token {{TOKEN}}", "Content-Type: application/json"],
+			"data": "{\"name\":\"{{REPO_NAME}}\", \"description\":\"{{DESCRIPTION}}\", \"private\":{{PRIVATE}}}"
+		}
+	]'
 
 	declare -A param_names=(
 		["REPO_DIR"]="repo_dir"
@@ -222,19 +271,15 @@ main() {
 		["VISIBILITY"]="$VISIBILITY"
 	)
 
-	echo "Please review before applying:"
+	prop_get "$i18n" ".$lang.val.rev"
 	params_print param_labels repo_conf_values
 	prompt_to_go
 
-	config_file="remote_repo_conf.json"
-
-	jq -c '.[]' "$config_file" | while read -r config; do
-		prov=$(echo "$config" | jq -r '.prov')
-		url=$(echo "$config" | jq -r '.url')
-		data=$(echo "$config" | jq -r '.data')
-		headers=$(echo "$config" | jq -r '.headers[]')
-
-		# Replace placeholders in data and headers
+	prop_get "$config_json" '.[]' | while read -r config; do
+		prov=$(prop_get "$config" '.prov')
+		url=$(prop_get "$config" '.url')
+		data=$(prop_get "$config" '.data')
+		headers=$(prop_get "$config" '.headers[]')
 		url=$(rephs "$url" repo_conf_values)
 		data=$(rephs "$data" repo_conf_values)
 		headers=($(rephs "${headers[@]}" repo_conf_values))
