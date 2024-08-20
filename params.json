@@ -1,0 +1,52 @@
+[
+	{
+		"id": "REPO_DIR",
+		"name": "repo_dir",
+		"def": "{{CUR_REPO_DIR}}"
+	},
+	{
+		"id": "OWNER",
+		"name": "owner",
+		"def": "{{CUR_USER}}"
+	},
+	{
+		"id": "REPO",
+		"name": "repo",
+		"def": "{{CUR_REPO}}"
+	},
+	{
+		"id": "DESCR",
+		"name": "descr",
+		"def": "{{I18N_REPO_DESCR}}"
+	},
+	{
+		"id": "BRANCH",
+		"name": "branch",
+		"def": "main"
+	},
+	{
+		"id": "PRIV",
+		"name": "priv",
+		"def": "false"
+	},
+	{
+		"id": "VIS",
+		"name": "vis",
+		"def": "public"
+	},
+	{
+		"id": "TOKEN_GH",
+		"name": "token_gh",
+		"def": ""
+	},
+	{
+		"id": "TOKEN_GL",
+		"name": "token_gl",
+		"def": ""
+	},
+	{
+		"id": "TOKEN_CB",
+		"name": "token_cb",
+		"def": ""
+	}
+]

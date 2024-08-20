@@ -8,13 +8,6 @@ prop_get() {
 	echo "$json" | jq -r "$prop"
 }
 
-replace() {
-	local data="$1"
-	local match="$2"
-	local replace="$3"
-	echo "${data//$match/$replace}"
-}
-
 rephs() {
 	local str="$1"
 	declare -n params="$2"

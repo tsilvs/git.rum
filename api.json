@@ -1,0 +1,20 @@
+[
+	{
+		"prov": "gh",
+		"url": "https://api.github.com/user/repos",
+		"headers": ["Authorization: token {{TOKEN}}", "Accept: application/vnd.github.v3+json"],
+		"data": "{\"name\":\"{{REPO_NAME}}\", \"description\":\"{{DESCR}}\", \"private\":{{PRIV}}}"
+	},
+	{
+		"prov": "gl",
+		"url": "https://gitlab.com/api/v4/projects",
+		"headers": ["PRIV-TOKEN: {{TOKEN}}"],
+		"data": "name={{REPO_NAME}}&description={{DESCR}}&visibility={{VIS}}"
+	},
+	{
+		"prov": "cb",
+		"url": "https://codeberg.org/api/v1/user/repos",
+		"headers": ["Authorization: token {{TOKEN}}", "Content-Type: application/json"],
+		"data": "{\"name\":\"{{REPO_NAME}}\", \"description\":\"{{DESCR}}\", \"private\":{{PRIV}}}"
+	}
+]

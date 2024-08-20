@@ -1,0 +1,83 @@
+{
+	"en": {
+		"repo": {
+			"not": "Is not a Git repo.",
+			"err": "Error creating repository.",
+			"succ": "Repository created.",
+			"skip": "Skip 'create': repo exists."
+		},
+		"rem": {
+			"ex": "Remote already exists.",
+			"nex": ""
+		},
+		"prt": {
+			"rev": "Please review before applying:",
+			"cfm": "Do you want to proceed?",
+			"cnc": "Operation canceled.",
+			"err": "Invalid input. Please enter 'y' or 'n'."
+		},
+		"params": [
+			{
+				"id": "REPO_DIR",
+				"descr": "Path to local Git repo",
+				"prompt": "Enter repo dir",
+				"label": "Repository Directory"
+			},
+			{
+				"id": "OWNER",
+				"descr": "Repo owner",
+				"prompt": "Enter owner",
+				"label": "Owner"
+			},
+			{
+				"id": "REPO",
+				"descr": "Repo name",
+				"prompt": "Enter repo name",
+				"label": "Repo Name"
+			},
+			{
+				"id": "DESCR",
+				"descr": "Repo description",
+				"prompt": "Enter repo description",
+				"val": "This is a repo for {{OWNER}}/{{REPO}} project",
+				"label": "Repo Description"
+			},
+			{
+				"id": "BRANCH",
+				"descr": "Current branch",
+				"prompt": "Enter branch name",
+				"label": "Branch"
+			},
+			{
+				"id": "PRIV",
+				"descr": "Repo private flag",
+				"prompt": "Is the repo private?",
+				"label": ""
+			},
+			{
+				"id": "VIS",
+				"descr": "Repo visibility",
+				"prompt": "Enter visibility",
+				"label": ""
+			},
+			{
+				"id": "TOKEN_GH",
+				"descr": "GitHub access token",
+				"prompt": "Enter GitHub token",
+				"label": "Token @ GitHub"
+			},
+			{
+				"id": "TOKEN_GL",
+				"descr": "GitLab access token",
+				"prompt": "Enter GitLab token",
+				"label": "Token @ GitLab"
+			},
+			{
+				"id": "TOKEN_CB",
+				"descr": "Codeberg access token",
+				"prompt": "Enter Codeberg token",
+				"label": "Token @ Codeberg"
+			}
+		]
+	}
+}
