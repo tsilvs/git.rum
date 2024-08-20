@@ -4,56 +4,42 @@
 
 . ./var.sh
 
-read_input() {
-	local prompt="$1"
-	local default="$2"
-	local input
-	read -rp "$prompt [$default]: " input
-	echo "${input:-$default}"
-}
-
-read_all_inputs() {
-	local params_json="$1"
-	local params_i18n_json="$2"
-	local params_out_json=''
-	params_out_json+='{\n'
-	prop_get "$params_json" 'keys_unsorted' | while read -r param; do
-		params_out_json+="\"$param\": \"$(read_input "$(prop_get "$params_i18n_json" ".[] | select(.id == \"$param\") | .prompt")" "$(prop_get "$params_json" ".[] | select(.id == \"$param\") | .def")")}\",\n"
-	done
-	params_out_json+='}'
-	echo $params_out_json
-}
-
 params_parse() {
 	# '.[].id'
 	# ".[] | select(.id == \"$param_id\")"
+	local params_j="$1"
+	local params_i18n_j="$2"
+	local params_c="$3"
+	local params_parsed_j=''
+	#prop_get "$params_j" '.[]'
+	#prop_get "$params_j" '.[].id'
+	#prop_get "$params_j" '.[] | select(.id == "$param_id")'
+	#prop_get "$params_j" '.[] | select(.id == "$param_id") | .id'
+	#prop_get "$params_j" '.[] | select(.id == "$param_id") | .name'
+	#prop_get "$params_j" '.[] | select(.id == "$param_id") | .def'
+	#long_opt="--$param_name"
+	#short_opt="-${param_name,,}"
+	#if [[ "$param_name" == "$long_opt" || "$parma_name" == "$short_opt" ]]; then
+	#	eval "${param_key}=\"$value\""
+	#	break
+	#fi
+	#	[[ "$key" == "-h" || "$key" == "--help" ]] && show_usage && exit 0
 	
-	local params_json="$1"
-	local params_i18n_json="$2"
-	#local param_names=$(prop_get "$params_json" '.[].id')
-	#local params=$(prop_get "$params_json" '.[]')
-	#readarray -t param_lines <<<"$param_names"
-	#local param_num=${#param_lines[@]}
-
-	#for param_line in $param_lines; do
-	#	key="$1"
-	#	value="$2"
-	#	shift 2
-
-	#	for param_key in "${!param_names[@]}"; do
-	#		long_opt="--$()"
-	#		short_opt="-${param_key,,}" # Convert key to lowercase for short option
-	#		if [[ "$key" == "$long_opt" || "$key" == "$short_opt" ]]; then
-	#			eval "${param_key}=\"$value\""
-	#			break
-	#		fi
-	#	done
-
-	#	if [[ "$key" == "-h" || "$key" == "--help" ]]; then
-	#		show_usage
-	#		exit 0
-	#	fi
+	#prop_get "$params_j" '' | while read -r param; do
+	#	params_out_j+="\"$param\": \"$(read_input "$(prop_get "$params_i18n_j" ".[] | select(.id == \"$param\") | .prompt")" "$(prop_get "$params_j" ".[] | select(.id == \"$param\") | .def")")}\",\n"
 	#done
+	
+	params_parsed_j+='[\n'
+	#loop through params
+		params_parsed_j+="
+		{
+			\"id\": \"$param_id\",
+			\"val\": \"$param_val\"
+		},
+		"
+	#end loop
+	params_parsed_j+=']'
+	echo "$params_parsed_j"
 }
 
 params_print() {
@@ -74,3 +60,35 @@ params_print() {
 	echo -e "$print_list"
 	tabs "$tab_stop"
 }
+
+read_input() {
+	local prompt="$1"
+	local default="$2"
+	local input
+	read -rp "$prompt [$default]: " input
+	echo "${input:-$default}"
+}
+
+read_all_inputs() {
+	local params_j="$1"
+	local params_i18n_j="$2"
+	local params_out_j=''
+	local param_id=''
+	local param_def=''
+	local param_prt=''
+	params_out_j+='[\n'
+	prop_get "$params_j" '.[]' | while read -r param; do
+		param_id="$(prop_get "$param" '.id')"
+		param_def="$(prop_get "$param" '.def')"
+		param_prt="$(prop_get "$params_i18n_j" ".[] | select(.id == \"$param_id\") | .prompt")"
+		params_out_j+="
+		{
+			\"id\": \"$param_id\",
+			\"val\": \"$(read_input "$param_prt" "$param_def")\"
+		},
+		"
+	done
+	params_out_j+=']'
+	echo $params_out_j
+}
+

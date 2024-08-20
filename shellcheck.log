@@ -1,0 +1,90 @@
+
+[1mIn remote.init.sh line 23:[0m
+[0m		echo "'$repo_dir' '$remote_name': $(prop_get "$i18n_rem_j" '.ex')"[0m
+[33m                                                              ^---------^ SC2154 (warning): i18n_rem_j is referenced but not assigned (did you mean 'i18n_repo_j'?).[0m
+
+
+[1mIn remote.init.sh line 37:[0m
+[0m	local i18n_api_j="$1"[0m
+[33m              ^--------^ SC2034 (warning): i18n_api_j appears unused. Verify use (or export if used externally).[0m
+
+
+[1mIn remote.init.sh line 38:[0m
+[0m	local api_j="$2"[0m
+[33m              ^---^ SC2034 (warning): api_j appears unused. Verify use (or export if used externally).[0m
+
+
+[1mIn remote.init.sh line 53:[0m
+[0m		echo "'$repo_name': Repository already exists on the server."[0m
+[33m                       ^--------^ SC2154 (warning): repo_name is referenced but not assigned.[0m
+
+
+[1mIn remote.init.sh line 65:[0m
+[0m			n|N) echo "$(prop_get "$i18n_prt_j" ".cnc")"; exit 1 ;;[0m
+[32m                                  ^-- SC2005 (style): Useless echo? Instead of 'echo $(cmd)', just use 'cmd'.[0m
+
+
+[1mIn remote.init.sh line 66:[0m
+[0m			*) echo "$(prop_get "$i18n_prt_j" ".err")" ;;[0m
+[32m                                ^-- SC2005 (style): Useless echo? Instead of 'echo $(cmd)', just use 'cmd'.[0m
+
+
+[1mIn remote.init.sh line 106:[0m
+[0m	local i18n="$(cat "$script_root/i18n.json")"[0m
+[33m              ^--^ SC2155 (warning): Declare and assign separately to avoid masking return values.[0m
+
+
+[1mIn remote.init.sh line 107:[0m
+[0m	local i18nl="$(prop_get "$i18n" ".$lang")"[0m
+[33m              ^---^ SC2155 (warning): Declare and assign separately to avoid masking return values.[0m
+
+
+[1mIn remote.init.sh line 108:[0m
+[0m	local api_json="$(cat "$script_root/api.json")"[0m
+[33m              ^------^ SC2155 (warning): Declare and assign separately to avoid masking return values.[0m
+
+
+[1mIn remote.init.sh line 109:[0m
+[0m	local params_json="$(cat "$script_root/params.json")"[0m
+[33m              ^---------^ SC2155 (warning): Declare and assign separately to avoid masking return values.[0m
+
+
+[1mIn remote.init.sh line 125:[0m
+[0m	local params_subed_json=$(rephs "$params_json" "$subs")[0m
+[33m              ^---------------^ SC2155 (warning): Declare and assign separately to avoid masking return values.[0m
+[33m                                                        ^---^ SC2128 (warning): Expanding an array without an index only gives the first element.[0m
+
+
+[1mIn remote.init.sh line 126:[0m
+[0m	local params_parsed_json=$(params_parse "$params_subed_json")[0m
+[33m              ^----------------^ SC2155 (warning): Declare and assign separately to avoid masking return values.[0m
+
+
+[1mIn remote.init.sh line 127:[0m
+[0m	local params_work_json=$(read_all_inputs "$params_parsed_json" "$(prop_get "$i18nl" ".params")")[0m
+[33m              ^--------------^ SC2155 (warning): Declare and assign separately to avoid masking return values.[0m
+
+
+[1mIn remote.init.sh line 143:[0m
+[0m		headers=$(prop_get "$api" '.headers[]')[0m
+[33m                ^-----^ SC2178 (warning): Variable was used as an array but is now assigned a string.[0m
+
+
+[1mIn remote.init.sh line 146:[0m
+[0m		headers=($(rephs "${headers[@]}" repo_conf_values))[0m
+[33m                         ^-- SC2207 (warning): Prefer mapfile or read -a to split command output (or quote to avoid splitting).[0m
+
+
+[1mIn remote.init.sh line 168:[0m
+[0m		repo_rem_add "$REPO_DIR" "$provider" "$(prop_get "$REPO" "${prov_url_props[$provider]}")" || exit 1[0m
+[32m                              ^-------^ SC2153 (info): Possible misspelling: REPO_DIR may not be assigned. Did you mean repo_dir?[0m
+
+
+[1mIn remote.init.sh line 169:[0m
+[0m		repo_rem_push "$REPO_DIR" "$provider" "$BRANCH"[0m
+[32m                                                       ^-----^ SC2153 (info): Possible misspelling: BRANCH may not be assigned. Did you mean branch?[0m
+
+For more information:
+  https://www.shellcheck.net/wiki/SC2034 -- api_j appears unused. Verify use ...
+  https://www.shellcheck.net/wiki/SC2128 -- Expanding an array without an ind...
+  https://www.shellcheck.net/wiki/SC2154 -- i18n_rem_j is referenced but not ...
