@@ -105,8 +105,8 @@ main() {
 	local script_root="${0%/*}"
 	local i18n="$(cat "$script_root/i18n.json")"
 	local i18nl="$(prop_get "$i18n" ".$lang")"
-	local api_json="$(cat "$script_root/api.json")"
-	local params_json="$(cat "$script_root/params.json")"
+	local api_j="$(cat "$script_root/api.json")"
+	local params_j="$(cat "$script_root/params.json")"
 
 	for arg in "$@"; do
 		if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
@@ -121,21 +121,22 @@ main() {
 		[CUR_REPO]="${PWD##*/}"
 		[I18N_REPO_DESCR]=""
 	)
-	
-	local params_subed_json=$(rephs "$params_json" "$subs")
-	local params_parsed_json=$(params_parse "$params_subed_json")
-	local params_work_json=$(read_all_inputs "$params_parsed_json" "$(prop_get "$i18nl" ".params")")
+
+	local params_c=("$@") # Populate params_c from command-line arguments
+	local params_subed_j=$(rephs "$params_j" "$subs")
+	local params_parsed_j=$(params_parse "$params_subed_j" "$i18n_j" "${params_c[@]}")
+	local params_work_j=$(read_all_inputs "$params_parsed_j" "$(prop_get "$i18nl" ".params")")
 	
 	# repo_check "$(prop_get "$i18nl" '.repo')"
 	# 
 
 	prop_get "$i18nl" ".val.rev" # Prompt for value revision
-	params_print "$params_work_json" # Print current values
+	params_print "$params_work_j" # Print current values
 	prompt_to_go "$(prop_get "$i18nl" ".prt")" # Prompt for action confirmation
 
 	# jq '.[] | select(.prov == "gh")' api.json
 
-	prop_get "$api_json" '.[]' | while read -r api; do
+	prop_get "$api_j" '.[]' | while read -r api; do
 	
 		prov=$(prop_get "$api" '.prov')
 		url=$(prop_get "$api" '.url')
@@ -173,8 +174,8 @@ main() {
 main "$@"
 
 #local -n param_values
-#local keys_json
-#prop_get "$keys_json" '.{}'
+#local keys_j
+#prop_get "$keys_j" '.{}'
 #prov=$(prop_get "$api" '.prov')
 #url=$(prop_get "$api" '.url')
 #data=$(prop_get "$api" '.data')
