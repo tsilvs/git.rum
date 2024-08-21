@@ -5,8 +5,8 @@
 prop_get() {
 	local json="$1"
 	local prop="$2"
-	echo "$json" | jq -r "$prop"
-	# jq -R -s 'fromjson | .' input.json > output.json
+	#echo "$json" | jq -r "$prop"
+	echo "$json" | jq -R -s "fromjson | . | $prop"
 }
 
 rephs() {
