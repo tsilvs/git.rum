@@ -122,19 +122,13 @@ main() {
 		[I18N_REPO_DESCR]=""
 	)
 
-	local params_c=("$@") # Populate params_c from command-line arguments
+	local params_c=("$@")
 	local params_subed_j=$(rephs "$params_j" "$subs")
-	local params_parsed_j=$(params_parse "$params_subed_j" "$i18n_j" "${params_c[@]}")
-	local params_work_j=$(read_all_inputs "$params_parsed_j" "$(prop_get "$i18nl" ".params")")
-	
-	# repo_check "$(prop_get "$i18nl" '.repo')"
-	# 
+	local params_work_j=$(params_parse "$params_subed_j" "$i18nl" "${params_c[@]}")
 
 	prop_get "$i18nl" ".val.rev" # Prompt for value revision
 	params_print "$params_work_j" # Print current values
 	prompt_to_go "$(prop_get "$i18nl" ".prt")" # Prompt for action confirmation
-
-	# jq '.[] | select(.prov == "gh")' api.json
 
 	prop_get "$api_j" '.[]' | while read -r api; do
 	
@@ -172,16 +166,3 @@ main() {
 }
 
 main "$@"
-
-#local -n param_values
-#local keys_j
-#prop_get "$keys_j" '.{}'
-#prov=$(prop_get "$api" '.prov')
-#url=$(prop_get "$api" '.url')
-#data=$(prop_get "$api" '.data')
-#headers=$(prop_get "$api" '.headers[]')
-#"${headers[@]}"
-#"${tokens[$prov]}"
-#"${prompts[$key]}" "${defaults[$key]}"
-#prop_get "$i18n" ".params.val.$key"
-#DEFAULT_REPO="repo-$(uuidgen | awk -F '-' '{ print $5 }')"

@@ -4,6 +4,14 @@
 
 . ./var.sh
 
+read_input() {
+	local prompt="$1"
+	local default="$2"
+	local input
+	read -rp "$prompt [$default]: " input
+	echo "${input:-$default}"
+}
+
 params_parse() {
 	local params_j="$1"
 	local params_i18n_j="$2"
@@ -17,16 +25,17 @@ params_parse() {
 		local param_prompt=$(prop_get "$params_i18n_j" ".[] | select(.id == \"$param_id\") | .prompt")
 		local param_val=""
 
-		for key in "${params_c[@]}"; do
-			if [[ "$key" == "--${param_name}"* ]]; then
-				param_val="${key#*=}"
+		for p in "${params_c[@]}"; do
+			local name="${p%%=*}"
+			local value="${p#*=}"
+			name="${name#--}"
+			if [[ "$name" == "$param_name" ]]; then
+				param_val="$value"
 				break
 			fi
 		done
 
-		if [[ -z "$param_val" ]]; then
-			param_val=$(read_input "$param_prompt" "$param_def")
-		fi
+		[[ -z "$param_val" ]] && param_val=$(read_input "$param_prompt" "$param_def")
 
 		params_parsed_j+="
 		{
@@ -59,35 +68,3 @@ params_print() {
 	echo -e "$print_list"
 	tabs "$tab_stop"
 }
-
-read_input() {
-	local prompt="$1"
-	local default="$2"
-	local input
-	read -rp "$prompt [$default]: " input
-	echo "${input:-$default}"
-}
-
-read_all_inputs() {
-	local params_j="$1"
-	local params_i18n_j="$2"
-	local params_out_j=''
-	local param_id=''
-	local param_def=''
-	local param_prt=''
-	params_out_j+='[\n'
-	prop_get "$params_j" '.[]' | while read -r param; do
-		param_id="$(prop_get "$param" '.id')"
-		param_def="$(prop_get "$param" '.def')"
-		param_prt="$(prop_get "$params_i18n_j" ".[] | select(.id == \"$param_id\") | .prompt")"
-		params_out_j+="
-		{
-			\"id\": \"$param_id\",
-			\"val\": \"$(read_input "$param_prt" "$param_def")\"
-		},
-		"
-	done
-	params_out_j+=']'
-	echo $params_out_j
-}
-
