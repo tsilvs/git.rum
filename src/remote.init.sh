@@ -1,12 +1,12 @@
 #!/bin/bash
 
-. ./libsh/var.sh
+. ../libsh/var.sh
 
-. ./libsh/net.sh
+. ../libsh/net.sh
 
-. ./libsh/param.sh
+. ../libsh/param.sh
 
-. ./libgit/repo.sh
+. ../libgit/repo.sh
 
 prompt_to_go() {
 	local i18n_prt_j="$1"
@@ -56,13 +56,13 @@ main() {
 	local lang="en"
 	local script_root="${0%/*}"
 	local i18n
-	i18n="$(cat "$script_root/i18n.json")"
+	i18n="$(cat "$script_root/../dat/i18n.json")"
 	local i18nl
 	i18nl="$(prop_get "$i18n" ".$lang")"
 	local api_j
-	api_j="$(cat "$script_root/api.json")"
+	api_j="$(cat "$script_root/../dat/api.json")"
 	local params_j
-	params_j="$(cat "$script_root/params.json")"
+	params_j="$(cat "$script_root/../dat/params.json")"
 
 	for arg in "$@"; do
 		if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
