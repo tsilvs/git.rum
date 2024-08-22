@@ -68,3 +68,29 @@ params_print() {
 	echo -e "$print_list"
 	tabs "$tab_stop"
 }
+
+params_print() {
+  local json_str="$1"
+  local print_list=""
+
+  # Parse the JSON string
+  local params_arr=($(echo "$json_str" | jq -r '.[] | {name: .id, descr: .val} | @tsv'))
+
+  # Calculate the maximum length of parameter names
+  local max_name_len=0
+  for param in "${params_arr[@]}"; do
+    local name=$(echo "$param" | awk -F"\t" '{print $1}')
+    if [[ ${#name} -gt $max_name_len ]]; then
+      max_name_len=${#name}
+    fi
+  done
+
+  # Build the formatted output
+  for param in "${params_arr[@]}"; do
+    local name=$(echo "$param" | awk -F"\t" '{print $1}')
+    local descr=$(echo "$param" | awk -F"\t" '{print $2}')
+    print_list+="${name}$(printf '%*s' $((max_name_len - ${#name} + 1)) '')${descr}\n"
+  done
+
+  echo -e "$print_list"
+}
